@@ -1,0 +1,31 @@
+CREATE TABLE IF NOT EXISTS campaign_email_messages (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  campaign_id BIGINT UNSIGNED NOT NULL,
+  customer_unique_id VARCHAR(120) NOT NULL,
+  customer_email VARCHAR(320) NOT NULL,
+  business_name VARCHAR(255) NULL,
+  direction ENUM('outbound') NOT NULL DEFAULT 'outbound',
+  message_type ENUM('initial', 'follow_up') NOT NULL,
+  subject VARCHAR(255) NOT NULL,
+  body LONGTEXT NULL,
+  status ENUM('pending', 'sent', 'failed') NOT NULL DEFAULT 'pending',
+  provider ENUM('brevo_api', 'brevo_smtp') NOT NULL,
+  provider_message_id VARCHAR(255) NULL,
+  rfc_message_id VARCHAR(255) NULL,
+  parent_message_id VARCHAR(255) NULL,
+  thread_root_message_id VARCHAR(255) NULL,
+  references_header TEXT NULL,
+  sent_at DATETIME NULL,
+  failed_at DATETIME NULL,
+  error_message TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY campaign_email_messages_campaign_index (campaign_id),
+  KEY campaign_email_messages_customer_index (campaign_id, customer_unique_id),
+  KEY campaign_email_messages_email_index (campaign_id, customer_email),
+  KEY campaign_email_messages_thread_index (thread_root_message_id),
+  CONSTRAINT campaign_email_messages_campaign_fk
+    FOREIGN KEY (campaign_id) REFERENCES campaign(id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB;

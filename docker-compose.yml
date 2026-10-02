@@ -1,0 +1,64 @@
+name: emailsendingproject
+
+services:
+  app:
+    container_name: emailsendingproject-app
+    build:
+      context: .
+      target: development
+    command: npm run dev -- --hostname 0.0.0.0
+    env_file:
+      - .env
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "${APP_PORT:-43127}:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    container_name: emailsendingproject-mysql
+    image: mysql:8.4
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-email_sending_project}
+      MYSQL_USER: ${DB_USER:-email_app}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-email_app_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+    ports:
+      - "${MYSQL_PORT:-43307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+      - ./docker/mysql/conf.d:/etc/mysql/conf.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    container_name: emailsendingproject-adminer
+    image: adminer:latest
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    ports:
+      - "${ADMINER_PORT:-48080}:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
+    name: 1_emailsendingproject_mysql_data

@@ -1,0 +1,31 @@
+{
+  "name": "emailsendingproject",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "node scripts/build.js",
+    "start": "node server.js",
+    "test": "node --test --import tsx tests/**/*.test.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/nodemailer": "^8.0.1",
+    "lucide-react": "^1.27.0",
+    "mysql2": "^3.23.2",
+    "next": "^16.2.12",
+    "nodemailer": "^9.0.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "tsx": "^4.23.5",
+    "typescript": "^5.9.3"
+  }
+}

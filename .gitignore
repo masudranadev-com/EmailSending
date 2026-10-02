@@ -1,0 +1,14 @@
+# Dependencies and generated output
+/node_modules/
+/.next/
+/out/
+/dist/
+*.tsbuildinfo
+
+# Local secrets; keep the configuration template in Git
+.env*
+!.env.example
+
+# Runtime logs and process-manager state
+*.log
+/.pm2/
