@@ -58,6 +58,18 @@ services:
       timeout: 5s
       retries: 10
 
+  adminer:
+    container_name: emailsendingproject-adminer
+    image: adminer:latest
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    ports:
+      - "${ADMINER_PORT:-48080}:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
 volumes:
   mysql_data:
-    name: 1_emailsendingproject_mysql_data
+    name: emailserver_mysql_data

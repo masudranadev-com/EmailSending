@@ -4,6 +4,7 @@ Run this command from the project directory on the server, with the project file
 and `.env` present:
 
 ```powershell
+npm run setup:env
 docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
 ```
 
@@ -29,6 +30,17 @@ Set `AUTH_SECRET` to a random secret and supply your database passwords and Brev
 credentials. These variables are explicitly forwarded to the app container;
 Portainer does not need a physical `.env` file for the production stack.
 Local Docker Compose commands can still read the project's `.env` automatically.
+
+Before deploying in Portainer, run `npm run setup:env` in the project directory.
+This creates `.env` from the template when needed, generates a private 32-byte
+random `AUTH_SECRET` when it is missing, empty, or still the template placeholder,
+and preserves an existing secret and all other settings. Fill in the database
+passwords and Brevo credentials, then import `.env` into the stack's Environment
+variables and save/redeploy. Keep this file private and do not commit it.
+
+If pulling the stack fails with `required variable AUTH_SECRET is missing a value`,
+the stack environment has not received the secret. Importing it into Portainer is
+required even when `.env` exists in your local checkout or repository directory.
 
 The production Compose file builds the application from `context: .` and uses
 the `docker/mysql` directories. Uploading the Compose file alone does

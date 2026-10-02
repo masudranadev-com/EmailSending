@@ -112,9 +112,14 @@ Replace `https://your-domain.com` with the production domain.
 If the server supports Docker:
 
 ```bash
-cp .env.example .env
+npm run setup:env
 docker compose -f docker-compose.prod.yml up -d --build
 ```
+
+`setup:env` generates a private `AUTH_SECRET` and preserves existing values.
+Fill in the remaining credentials in `.env` before deployment. For Portainer,
+import `.env` under the stack's Environment variables before deploying; a local
+`.env` file alone does not supply Portainer's Compose interpolation variables.
 
 For updates:
 
