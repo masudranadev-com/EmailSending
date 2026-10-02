@@ -22,8 +22,16 @@ For a production stack, use `docker-compose.prod.yml` as the Compose file.
 its contents into Portainer's YAML editor. When copying YAML, exclude Markdown
 code fences and preserve indentation using spaces.
 
+The production Compose file reads settings from deployment environment variables.
+In Portainer, add the variables listed in `.env.example` under the stack's
+Environment variables section (or use its environment-file import option).
+Set `AUTH_SECRET` to a random secret and supply your database passwords and Brevo
+credentials. These variables are explicitly forwarded to the app container;
+Portainer does not need a physical `.env` file for the production stack.
+Local Docker Compose commands can still read the project's `.env` automatically.
+
 The production Compose file builds the application from `context: .` and uses
-`.env` and the `docker/mysql` directories. Uploading the Compose file alone does
+the `docker/mysql` directories. Uploading the Compose file alone does
 not include these project files. Ensure they are available in the deployment
 context, or use a Git repository deployment with the required files and
 environment configuration.

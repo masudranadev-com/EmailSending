@@ -7,12 +7,30 @@ services:
       context: .
       target: production
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
       NODE_ENV: production
+      DB_NAME: ${DB_NAME:-email_sending_project}
+      DB_USER: ${DB_USER:-email_app}
+      DB_PASSWORD: ${DB_PASSWORD:-email_app_password}
+      AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET in the deployment environment}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Email Sending Project}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      SENDINBLUE_API_KEY: ${SENDINBLUE_API_KEY:-}
+      BREVO_REQUIRE_CREDIT_CHECK: ${BREVO_REQUIRE_CREDIT_CHECK:-true}
+      BREVO_SMTP_HOST: ${BREVO_SMTP_HOST:-smtp-relay.brevo.com}
+      BREVO_SMTP_PORT: ${BREVO_SMTP_PORT:-587}
+      BREVO_SMTP_USER: ${BREVO_SMTP_USER:-}
+      BREVO_SMTP_PASSWORD: ${BREVO_SMTP_PASSWORD:-}
+      BREVO_SMTP_SECURE: ${BREVO_SMTP_SECURE:-false}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-}
+      DEFAULT_FROM_NAME: ${DEFAULT_FROM_NAME:-}
+      MESSAGE_ID_DOMAIN: ${MESSAGE_ID_DOMAIN:-}
+      SPEED_LIMIT_PER_MINUTE: ${SPEED_LIMIT_PER_MINUTE:-5}
+      DAILY_SENDING_LIMIT: ${DAILY_SENDING_LIMIT:-200}
+      DAILY_SENDING_TIME_ZONE: ${DAILY_SENDING_TIME_ZONE:-Asia/Dhaka}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-Brevo API}
     ports:
       - "${APP_PORT:-43127}:3000"
     depends_on:
@@ -23,8 +41,6 @@ services:
     container_name: emailsendingproject-mysql
     image: mysql:8.4
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       MYSQL_DATABASE: ${DB_NAME:-email_sending_project}
       MYSQL_USER: ${DB_USER:-email_app}
