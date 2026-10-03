@@ -1755,8 +1755,43 @@ a {
 
 .customer-mail-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
   justify-content: flex-end;
+}
+
+.customer-mail-form > .form-field,
+.customer-mail-form > .lookup-summary,
+.customer-mail-form > .customer-mail-actions {
+  grid-column: 1 / -1;
+}
+
+.customer-mail-form input[type="file"] {
+  height: auto;
+  min-height: var(--height-md);
+  padding: var(--space-2);
+}
+
+.customer-mail-form input[type="file"]::file-selector-button {
+  min-height: var(--height-md);
+  margin-right: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.customer-mail-form input[type="file"]:hover::file-selector-button {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary-border);
+}
+
+.customer-mail-form input[type="file"]:disabled::file-selector-button {
+  cursor: not-allowed;
+  opacity: 0.75;
 }
 
 .lookup-result-panel {

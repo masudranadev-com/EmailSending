@@ -1,9 +1,10 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Copy, Eye, Filter, MailPlus, Plus, RefreshCw, Search, UsersRound, X } from "lucide-react";
 import AppShell from "../layouts/app-shell";
+import { parseCustomerJsonFile } from "../../lib/customer-json-files";
 
 type CustomerRecord = {
   id: number;
@@ -69,6 +70,8 @@ export default function CustomerPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [addedFilter, setAddedFilter] = useState("all");
   const [mailInput, setMailInput] = useState("");
+  const [isImportingJson, setIsImportingJson] = useState(false);
+  const [jsonImportSummary, setJsonImportSummary] = useState("");
   const [lookupResult, setLookupResult] = useState<LookupResponse | null>(null);
   const [customerUpdateResult, setCustomerUpdateResult] = useState<CustomerUpdateResponse | null>(
     null,
@@ -85,6 +88,49 @@ export default function CustomerPage() {
   const [addCustomerError, setAddCustomerError] = useState("");
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
   const isCustomerUpdateInput = mailInput.trimStart().startsWith("[");
+  const isMailBusy = isLookingUp || isImportingJson;
+
+  const handleJsonFiles = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (!files.length) return;
+
+    setIsImportingJson(true);
+    setLookupError("");
+    setJsonImportSummary("");
+    setLookupResult(null);
+    setCustomerUpdateResult(null);
+    try {
+      const batches = await Promise.all(files.map(async (file) => {
+        try {
+          return parseCustomerJsonFile(await file.text());
+        } catch (error) {
+          throw new Error(`${file.name}: ${error instanceof Error ? error.message : "Could not read file."}`);
+        }
+      }));
+      const records = batches.flat();
+      setMailInput(JSON.stringify(records, null, 2));
+      setJsonImportSummary(`${files.length} files merged · ${records.length} records. All records and fields preserved.`);
+    } catch (error) {
+      setLookupError(error instanceof Error ? error.message : "Could not merge JSON files.");
+    } finally {
+      setIsImportingJson(false);
+    }
+  };
+
+  const handleDownloadMergedJson = () => {
+    try {
+      const records = parseCustomerJsonFile(mailInput);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(records, null, 2)], { type: "application/json" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "merged-customers.json";
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setLookupError(error instanceof Error ? error.message : "Invalid JSON.");
+    }
+  };
 
   const fetchCustomers = async (showRefreshing = false) => {
     if (showRefreshing) {
@@ -292,6 +338,7 @@ export default function CustomerPage() {
 
   const openUpdateCustomerModal = () => {
     setMailInput("");
+    setJsonImportSummary("");
     setLookupResult(null);
     setLookupError("");
     setCustomerUpdateResult(null);
@@ -552,6 +599,7 @@ export default function CustomerPage() {
               <button
                 aria-label="Close mail lookup"
                 className="icon-button"
+                disabled={isMailBusy}
                 onClick={closeLookupModal}
                 type="button"
               >
@@ -561,13 +609,39 @@ export default function CustomerPage() {
 
             <div className="customer-lookup-modal-body">
               <div className="customer-mail-form">
+                <label className="form-field" htmlFor="customer-json-files">
+                  <span>Merge customer JSON files</span>
+                  <input
+                    accept=".json,application/json"
+                    aria-describedby="customer-json-files-help"
+                    disabled={isMailBusy}
+                    id="customer-json-files"
+                    multiple
+                    onChange={(event) => void handleJsonFiles(event)}
+                    type="file"
+                  />
+                  <small id="customer-json-files-help">
+                    Select multiple files at once. Their records replace the text below as one merged JSON array.
+                    Nothing is saved until you choose Update customers.
+                  </small>
+                </label>
+                {isImportingJson || jsonImportSummary ? (
+                  <div className="lookup-summary" role="status">
+                    {isImportingJson ? "Reading and merging JSON files..." : jsonImportSummary}
+                  </div>
+                ) : null}
                 <label className="form-field" htmlFor="customer-mails">
                   <span>Email list or customer update JSON</span>
                   <textarea
                     autoFocus
+                    disabled={isMailBusy}
+                    aria-describedby={lookupError ? "customer-mail-error" : undefined}
                     id="customer-mails"
                     name="customerMails"
-                    onChange={(event) => setMailInput(event.target.value)}
+                    onChange={(event) => {
+                      setMailInput(event.target.value);
+                      setJsonImportSummary("");
+                    }}
                     placeholder={
                       "mail1@example.com\nmail2@example.com\n\nOr paste a JSON array containing email, headquarters, mobile_number, store_link, business_name, and seller_name."
                     }
@@ -583,7 +657,7 @@ export default function CustomerPage() {
                 <div className="customer-mail-actions">
                   <button
                     className="button-secondary"
-                    disabled={isLookingUp || !mailInput.trim() || isCustomerUpdateInput}
+                    disabled={isMailBusy || !mailInput.trim() || isCustomerUpdateInput}
                     onClick={() => void handleProcessMails("lookup")}
                     type="button"
                   >
@@ -592,17 +666,25 @@ export default function CustomerPage() {
                   </button>
                   <button
                     className="button-primary"
-                    disabled={isLookingUp || !mailInput.trim() || !isCustomerUpdateInput}
+                    disabled={isMailBusy || !mailInput.trim() || !isCustomerUpdateInput}
                     onClick={() => void handleProcessMails("update")}
                     type="button"
                   >
                     <RefreshCw aria-hidden="true" size={16} />
                     {activeMailAction === "update" ? "Updating..." : "Update customers"}
                   </button>
+                  <button
+                    className="button-secondary"
+                    disabled={isMailBusy || !isCustomerUpdateInput}
+                    onClick={handleDownloadMergedJson}
+                    type="button"
+                  >
+                    Download merged JSON
+                  </button>
                 </div>
               </div>
 
-              {lookupError ? <div className="form-status-error">{lookupError}</div> : null}
+              {lookupError ? <div className="form-status-error" id="customer-mail-error" role="alert">{lookupError}</div> : null}
 
               {customerUpdateResult ? (
                 <div className="lookup-result-panel" aria-live="polite">
