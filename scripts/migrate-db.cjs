@@ -48,7 +48,7 @@ async function main() {
       ) ENGINE=InnoDB
     `);
 
-    const [migrationFiles] = await fs.readdir(migrationsDirectory);
+    const migrationFiles = await fs.readdir(migrationsDirectory);
     const orderedFiles = migrationFiles.filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
     const [appliedRows] = await connection.query(
       "SELECT migration_name FROM app_schema_migrations",
