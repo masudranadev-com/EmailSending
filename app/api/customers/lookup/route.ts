@@ -150,6 +150,16 @@ export async function PATCH(request: Request) {
           [...values, customerId],
         );
 
+        await connection.execute<ResultSetHeader>(
+          `UPDATE target_clients
+          SET information = JSON_SET(
+            IF(JSON_TYPE(information) = 'OBJECT', information, JSON_OBJECT()),
+            ${jsonSetArguments}
+          )
+          WHERE email = ?`,
+          [...values, update.email],
+        );
+
         updatedEmails.push(update.email);
       }
 

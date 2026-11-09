@@ -208,4 +208,8 @@ docker/mysql/migrations/007_create_user.sql
 docker/mysql/migrations/008_create_campaign_email_messages.sql
 ```
 
+```text
+docker/mysql/migrations/012_create_target_clients.sql
+```
+
 The Docker init file runs automatically only the first time the MySQL volume is created.

@@ -6,7 +6,7 @@ import Sidebar from "./sidebar";
 type AppShellProps = {
   actionHref?: string;
   actionLabel?: string;
-  activeItem?: "dashboard" | "campaign" | "customer" | "templates" | "settings";
+  activeItem?: "dashboard" | "campaign" | "customer" | "target-customer" | "templates" | "settings";
   children: ReactNode;
   description?: string;
   eyebrow?: string;

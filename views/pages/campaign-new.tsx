@@ -20,7 +20,9 @@ export default function CampaignNewPage() {
   const router = useRouter();
   const [sendMode, setSendMode] = useState<"now" | "scheduled">("now");
   const [campaignName, setCampaignName] = useState("");
+  const [contactsSource, setContactsSource] = useState<"custom" | "target">("custom");
   const [contactsJson, setContactsJson] = useState("");
+  const [customContactsJson, setCustomContactsJson] = useState("");
   const [jsonUploadStatus, setJsonUploadStatus] = useState(
     "Upload a .json file or paste contacts manually.",
   );
@@ -38,6 +40,7 @@ export default function CampaignNewPage() {
   const [scheduleAt, setScheduleAt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState("");
+  const [isLoadingTargetClients, setIsLoadingTargetClients] = useState(false);
 
   useEffect(() => {
     const formatter = new Intl.DateTimeFormat("en-GB", {
@@ -117,6 +120,7 @@ export default function CampaignNewPage() {
     if (invalidFile) {
       setJsonUploadStatus(`${invalidFile.name} is not a valid .json file.`);
       setContactsJson("");
+      setCustomContactsJson("");
       setIsUnique(false);
       return;
     }
@@ -137,7 +141,9 @@ export default function CampaignNewPage() {
         mergedContacts.push(...contacts);
       }
 
-      setContactsJson(JSON.stringify(mergedContacts, null, 2));
+      const mergedJson = JSON.stringify(mergedContacts, null, 2);
+      setContactsJson(mergedJson);
+      setCustomContactsJson(mergedJson);
       setIsUnique(false);
       setContactsCheckStatus("");
       setJsonUploadStatus(
@@ -148,6 +154,37 @@ export default function CampaignNewPage() {
       setJsonUploadStatus(
         "One or more uploaded files, or the current contacts text, contain invalid JSON.",
       );
+    }
+  }
+
+  async function handleContactsSourceChange(event: ChangeEvent<HTMLSelectElement>) {
+    const source = event.target.value as "custom" | "target";
+    setContactsSource(source);
+    setContactsCheckStatus("");
+    setIsUnique(false);
+    if (source !== "target") {
+      setContactsJson(customContactsJson);
+      setJsonUploadStatus("Upload a .json file or paste contacts manually.");
+      return;
+    }
+    setIsLoadingTargetClients(true);
+    setJsonUploadStatus("Loading new target clients...");
+    try {
+      const response = await fetch("/api/target-clients?status=new", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "Target clients could not be loaded.");
+      const contacts = (result.clients || []).map((client: { email: string; information?: Record<string, unknown> }) => ({
+        ...(client.information || {}),
+        email: client.email,
+      }));
+      setContactsJson(JSON.stringify(contacts, null, 2));
+      setJsonUploadStatus(`${contacts.length} new target client(s) ready.`);
+      if (contacts.length === 0) setContactsCheckStatus("There are no new target clients available.");
+    } catch (error) {
+      setContactsJson("");
+      setJsonUploadStatus(error instanceof Error ? error.message : "Target clients could not be loaded.");
+    } finally {
+      setIsLoadingTargetClients(false);
     }
   }
 
@@ -171,6 +208,7 @@ export default function CampaignNewPage() {
       }
 
       setContactsJson(result.contactsJson || "[]");
+      setCustomContactsJson(result.contactsJson || "[]");
       setIsUnique(true);
       setContactsCheckStatus(
         [
@@ -205,6 +243,7 @@ export default function CampaignNewPage() {
         },
         body: JSON.stringify({
           campaignName,
+          contactsSource,
           contactsJson,
           emailSubject,
           fromEmail,
@@ -274,42 +313,42 @@ export default function CampaignNewPage() {
 
             <div className="form-field form-field-full">
               <span>
-                Contacts import in JSON <b aria-hidden="true">*</b>
+                Contact source <b aria-hidden="true">*</b>
               </span>
-              <label className="json-upload-box" htmlFor="contacts-file">
-                <Upload aria-hidden="true" size={20} />
-                <span>
-                  <strong>Upload JSON file</strong>
-                  <small>{jsonUploadStatus}</small>
-                </span>
-                <input
-                  accept=".json,application/json"
-                  id="contacts-file"
-                  multiple
-                  name="contactsFile"
-                  onChange={handleContactsFileUpload}
-                  type="file"
-                />
-              </label>
+              <select id="contacts-source" onChange={handleContactsSourceChange} value={contactsSource}>
+                <option value="custom">Custom Import</option>
+                <option value="target">Target Clients</option>
+              </select>
+              {contactsSource === "custom" ? <>
+                <label className="json-upload-box" htmlFor="contacts-file">
+                  <Upload aria-hidden="true" size={20} />
+                  <span><strong>Upload JSON file</strong><small>{jsonUploadStatus}</small></span>
+                  <input accept=".json,application/json" id="contacts-file" multiple name="contactsFile" onChange={handleContactsFileUpload} type="file" />
+                </label>
+              </> : <small>{isLoadingTargetClients ? "Loading..." : jsonUploadStatus}</small>}
+              <label htmlFor="contacts-json"><span>{contactsSource === "target" ? "Selected target clients" : "Contacts import in JSON"} <b aria-hidden="true">*</b></span></label>
               <textarea
                 id="contacts-json"
                 name="contactsJson"
+                aria-label={contactsSource === "target" ? "Target clients selected for this campaign" : "Custom contacts JSON"}
+                readOnly={contactsSource === "target"}
                 onChange={(event) => {
                   setContactsJson(event.target.value);
+                  if (contactsSource === "custom") setCustomContactsJson(event.target.value);
                   setIsUnique(false);
                   setContactsCheckStatus("");
                 }}
                 placeholder={'[\n  { "email": "name@example.com", "name": "John Doe" }\n]'}
-                required
+                required={contactsSource === "custom"}
                 rows={8}
                 value={contactsJson}
               />
               <input name="is_unique" type="hidden" value={String(isUnique)} />
-              <small>
+              {contactsSource === "custom" ? <small>
                 Upload one or more JSON files. Arrays are merged together, and
                 single objects are added as contacts.
-              </small>
-              <div className="contacts-check-row">
+              </small> : <small>New records from target_clients are selected automatically. They become old when the campaign is created.</small>}
+              {contactsSource === "custom" ? <div className="contacts-check-row">
                 <button
                   className="button-secondary"
                   disabled={isCheckingContacts || contactsJson.trim().length === 0}
@@ -323,6 +362,7 @@ export default function CampaignNewPage() {
                 </button>
                 {contactsCheckStatus ? <small>{contactsCheckStatus}</small> : null}
               </div>
+              : null}
             </div>
 
             <label className="form-field form-field-full" htmlFor="template">
@@ -465,7 +505,7 @@ export default function CampaignNewPage() {
             </Link>
             <button
               className="button-primary"
-              disabled={isCheckingContacts || isSubmitting}
+              disabled={isCheckingContacts || isSubmitting || isLoadingTargetClients}
               type="submit"
             >
               {isSubmitting ? (

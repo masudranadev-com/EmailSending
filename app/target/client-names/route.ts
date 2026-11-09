@@ -52,7 +52,7 @@ export async function GET(request: Request) {
             TRIM(JSON_UNQUOTE(JSON_EXTRACT(information, '$.business_name'))),
             ''
           ) AS business_name
-        FROM unique_emails
+        FROM target_clients
       ), resolved_names AS (
         SELECT
           id,
@@ -67,10 +67,10 @@ export async function GET(request: Request) {
           END AS seller_name
         FROM customer_names
       )
-      SELECT seller_name
+      SELECT DISTINCT seller_name
       FROM resolved_names
       WHERE seller_name IS NOT NULL
-      ORDER BY id ASC`,
+      ORDER BY seller_name ASC`,
     );
 
     return jsonResponse(rows.map((row) => row.seller_name), request);

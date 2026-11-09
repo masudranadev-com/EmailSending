@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { ResultSetHeader } from "mysql2";
-import { query } from "../../../lib/db";
+import { query, withTransaction } from "../../../lib/db";
 import { normalizeEmail } from "../../../lib/campaign-contacts";
 import { mapUniqueEmailRow, type UniqueEmailRow } from "../../../lib/customer-records";
 
@@ -75,10 +75,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await query<ResultSetHeader>(
-      `INSERT INTO unique_emails (email, information) VALUES (?, ?)`,
-      [email, information ? JSON.stringify(information) : null],
-    );
+    const result = await withTransaction(async (connection) => {
+      const [insertResult] = await connection.execute<ResultSetHeader>(
+        `INSERT INTO unique_emails (email, information) VALUES (?, ?)`,
+        [email, information ? JSON.stringify(information) : null],
+      );
+      await connection.execute(
+        `INSERT INTO target_clients (email, information, status)
+        VALUES (?, ?, 'old')
+        ON DUPLICATE KEY UPDATE information = VALUES(information), status = 'old'`,
+        [email, information ? JSON.stringify(information) : null],
+      );
+      return insertResult;
+    });
     const insertedRows = await query<UniqueEmailRow[]>(
       `SELECT
         id,

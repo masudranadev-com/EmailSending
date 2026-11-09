@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import {
   ContactValidationError,
-  insertUniqueContacts,
   parseAndNormalizeContacts,
 } from "../../../lib/campaign-contacts";
 import { databaseError, ValidationError } from "../../../lib/api-response";
 import { scheduleCampaignSend } from "../../../lib/campaign-scheduler";
 import { startCampaignSend } from "../../../lib/campaign-sending";
-import { query } from "../../../lib/db";
+import { query, withTransaction } from "../../../lib/db";
 import { readEmailDeliverySettings } from "../../../lib/email-settings";
+import { parseTargetClientInformation, type TargetClientRow } from "../../../lib/target-clients";
 
 export const runtime = "nodejs";
 
@@ -51,6 +51,7 @@ type TemplateExistsRow = RowDataPacket & {
 
 type CampaignPayload = {
   campaignName: string;
+  contactsSource: "custom" | "target";
   contactsJson: string;
   emailSubject: string;
   fromEmail: string;
@@ -120,16 +121,45 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const payload = validateCampaignPayload(await request.json());
-    const { contacts, duplicateCount, invalidCount } = parseAndNormalizeContacts(
-      payload.contactsJson,
-    );
+    let contacts: ReturnType<typeof parseAndNormalizeContacts>["contacts"] = [];
+    let duplicateCount = 0;
+    let invalidCount = 0;
+
+    if (payload.contactsSource === "custom") {
+      const parsed = parseAndNormalizeContacts(payload.contactsJson);
+      contacts = parsed.contacts;
+      duplicateCount = parsed.duplicateCount;
+      invalidCount = parsed.invalidCount;
+      if (contacts.length === 0) {
+        throw new ValidationError("At least one valid contact is required.");
+      }
+    }
 
     await assertTemplateExists(payload.templateId);
 
     const isScheduled = payload.sendMode === "scheduled";
     const scheduleDate = isScheduled ? readScheduleDate(payload.scheduleAt) : null;
-    const result = await query<ResultSetHeader>(
-      `INSERT INTO campaign (
+    let uniqueInsertedCount = 0;
+    const campaign = await withTransaction(async (connection) => {
+      if (payload.contactsSource === "target") {
+        const [targetRows] = await connection.execute<TargetClientRow[]>(
+          `SELECT id, email, information, status, created_at, updated_at
+          FROM target_clients
+          WHERE status = 'new'
+          ORDER BY id ASC
+          FOR UPDATE`,
+        );
+        contacts = targetRows.map((row) => ({
+          ...parseTargetClientInformation(row.information),
+          email: row.email.toLowerCase(),
+        }));
+        if (contacts.length === 0) {
+          throw new ValidationError("There are no new target clients available for this campaign.");
+        }
+      }
+
+      const [result] = await connection.execute<ResultSetHeader>(
+        `INSERT INTO campaign (
         name,
         customers,
         recipient_count,
@@ -145,27 +175,52 @@ export async function POST(request: Request) {
         is_schedule,
         schedule_date,
         send_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        payload.campaignName,
-        JSON.stringify(contacts),
-        contacts.length,
-        0,
-        0,
-        0,
-        contacts.length,
-        payload.templateId,
-        payload.emailSubject,
-        payload.fromName,
-        payload.fromEmail,
-        payload.replyTo || null,
-        isScheduled,
-        scheduleDate,
-        isScheduled ? "scheduled" : "pending",
-      ],
-    );
-    const campaignId = result.insertId;
-    const uniqueInsertedCount = payload.isUnique ? await insertUniqueContacts(contacts) : 0;
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          payload.campaignName,
+          JSON.stringify(contacts),
+          contacts.length,
+          0,
+          0,
+          0,
+          contacts.length,
+          payload.templateId,
+          payload.emailSubject,
+          payload.fromName,
+          payload.fromEmail,
+          payload.replyTo || null,
+          isScheduled,
+          scheduleDate,
+          isScheduled ? "scheduled" : "pending",
+        ],
+      );
+
+      for (let index = 0; index < contacts.length; index += 500) {
+        const chunk = contacts.slice(index, index + 500);
+        const placeholders = chunk.map(() => "(?, ?, 'old')").join(", ");
+        const values = chunk.flatMap((contact) => [contact.email, JSON.stringify(contact)]);
+        await connection.execute(
+          `INSERT INTO target_clients (email, information, status)
+          VALUES ${placeholders}
+          ON DUPLICATE KEY UPDATE information = VALUES(information), status = 'old'`,
+          values,
+        );
+
+        if (payload.contactsSource === "target" || payload.isUnique) {
+          const [uniqueResult] = await connection.execute<ResultSetHeader>(
+            `INSERT IGNORE INTO unique_emails (email, information)
+            VALUES ${chunk.map(() => "(?, ?)").join(", ")}`,
+            values,
+          );
+          uniqueInsertedCount += uniqueResult.affectedRows;
+        }
+      }
+
+      return { campaignId: result.insertId, contacts, uniqueInsertedCount };
+    });
+    const campaignId = campaign.campaignId;
+    contacts = campaign.contacts;
+    uniqueInsertedCount = campaign.uniqueInsertedCount;
     let scheduledInProcess = false;
 
     if (isScheduled && scheduleDate) {
@@ -240,6 +295,7 @@ function validateCampaignPayload(payload: unknown): CampaignPayload {
   const data = payload as Record<string, unknown>;
   const campaignName = readString(data.campaignName);
   const contactsJson = readString(data.contactsJson);
+  const contactsSource = data.contactsSource === "target" ? "target" : "custom";
   const emailSubject = readString(data.emailSubject);
   const fromName = readString(data.fromName);
   const fromEmail = readString(data.fromEmail);
@@ -253,7 +309,7 @@ function validateCampaignPayload(payload: unknown): CampaignPayload {
     throw new ValidationError("Campaign name is required.");
   }
 
-  if (!contactsJson) {
+  if (contactsSource === "custom" && !contactsJson) {
     throw new ValidationError("Contacts JSON is required.");
   }
 
@@ -279,6 +335,7 @@ function validateCampaignPayload(payload: unknown): CampaignPayload {
 
   return {
     campaignName,
+    contactsSource,
     contactsJson,
     emailSubject,
     fromEmail,

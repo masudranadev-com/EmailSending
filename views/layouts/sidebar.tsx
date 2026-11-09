@@ -6,11 +6,12 @@ import {
   Mail,
   Send,
   Settings,
+  Target,
   UsersRound,
 } from "lucide-react";
 
 type SidebarProps = {
-  activeItem?: "dashboard" | "campaign" | "customer" | "templates" | "settings";
+  activeItem?: "dashboard" | "campaign" | "customer" | "target-customer" | "templates" | "settings";
 };
 
 const navigationItems = [
@@ -31,6 +32,12 @@ const navigationItems = [
     label: "Customer",
     icon: UsersRound,
     id: "customer",
+  },
+  {
+    href: "/target-customer",
+    label: "Target Customer",
+    icon: Target,
+    id: "target-customer",
   },
   {
     href: "/template",

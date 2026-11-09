@@ -1846,6 +1846,16 @@ a {
   margin-bottom: var(--space-5);
 }
 
+.target-customer-layout .dashboard-aside {
+  display: grid;
+  align-content: start;
+  gap: var(--space-6);
+}
+
+.target-customer-layout .customer-filter-grid {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+
 .customer-filter-button {
   min-width: 112px;
 }
@@ -2576,6 +2586,7 @@ p {
   .form-grid,
   .schedule-options,
   .customer-filter-grid,
+  .target-customer-layout .customer-filter-grid,
   .customer-mail-form,
   .settings-check-list,
   .security-options {
