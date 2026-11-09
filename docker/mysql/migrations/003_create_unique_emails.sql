@@ -1,5 +1,3 @@
-USE email_sending_project;
-
 CREATE TABLE IF NOT EXISTS unique_emails (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   email VARCHAR(320) NOT NULL,

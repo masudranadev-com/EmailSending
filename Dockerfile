@@ -31,5 +31,7 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.mjs ./next.config.mjs
 COPY --from=builder /app/server.js ./server.js
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/docker/mysql/migrations ./docker/mysql/migrations
 EXPOSE 3000
 CMD ["npm", "run", "start", "--", "--hostname", "0.0.0.0"]

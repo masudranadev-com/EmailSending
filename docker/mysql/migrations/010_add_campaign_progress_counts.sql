@@ -1,8 +1,16 @@
 ALTER TABLE campaign
-  ADD COLUMN recipient_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER customers,
-  ADD COLUMN sent_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER recipient_count,
-  ADD COLUMN failed_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER sent_count,
-  ADD COLUMN sending_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER failed_count,
+  ADD COLUMN recipient_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER customers;
+
+ALTER TABLE campaign
+  ADD COLUMN sent_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER recipient_count;
+
+ALTER TABLE campaign
+  ADD COLUMN failed_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER sent_count;
+
+ALTER TABLE campaign
+  ADD COLUMN sending_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER failed_count;
+
+ALTER TABLE campaign
   ADD COLUMN pending_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER sending_count;
 
 UPDATE campaign

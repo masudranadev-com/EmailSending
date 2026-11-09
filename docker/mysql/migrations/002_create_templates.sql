@@ -1,5 +1,3 @@
-USE email_sending_project;
-
 CREATE TABLE IF NOT EXISTS templates (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(180) NOT NULL,

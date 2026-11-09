@@ -6,6 +6,7 @@ services:
     build:
       context: .
       target: production
+    command: ["npm", "run", "start:migrate"]
     restart: unless-stopped
     environment:
       DB_HOST: mysql

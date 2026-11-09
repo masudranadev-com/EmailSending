@@ -128,6 +128,23 @@ git pull origin main
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
+The production container runs `npm run db:migrate` before starting Next.js.
+Applied files are recorded in `app_schema_migrations`, so each migration runs
+once and a migration error prevents the app from starting. This also runs when
+Portainer redeploys or recreates the app container. To apply migrations manually
+from the project directory:
+
+```bash
+docker compose -f docker-compose.prod.yml exec app npm run db:migrate
+```
+
+For Portainer, update/redeploy the stack after pulling the latest project files;
+the app startup performs the migrations automatically. To run one manually,
+open a console in the app container and run `npm run db:migrate`.
+The production Compose file keeps MySQL data in the named `emailserver_mysql_data`
+volume. Redeploying the stack does not remove that volume. The migration runner
+also refuses `DROP`, `TRUNCATE`, and `DELETE` statements.
+
 ## 8. Security Notes
 
 - Rotate any API key that was ever committed to GitHub history.

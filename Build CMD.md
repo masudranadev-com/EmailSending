@@ -48,6 +48,16 @@ not include these project files. Ensure they are available in the deployment
 context, or use a Git repository deployment with the required files and
 environment configuration.
 
+The production app runs pending database migrations on startup after MySQL is
+healthy. To run them manually, open the app container console in Portainer and
+run:
+
+```bash
+npm run db:migrate
+```
+
+Successful migration filenames are recorded in `app_schema_migrations`.
+
 If Portainer reports `All collection items must start at the same column`, check
 the exact YAML submitted to Portainer: entries in the same list must have their
 `-` characters aligned, and sibling mapping keys must have equal indentation.

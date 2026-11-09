@@ -8,6 +8,8 @@
     "dev": "next dev --webpack",
     "build": "node scripts/build.js",
     "start": "node server.js",
+    "start:migrate": "npm run db:migrate && npm run start",
+    "db:migrate": "node scripts/migrate-db.cjs",
     "test": "node --test --import tsx tests/**/*.test.ts"
   },
   "keywords": [],

@@ -213,3 +213,6 @@ docker/mysql/migrations/012_create_target_clients.sql
 ```
 
 The Docker init file runs automatically only the first time the MySQL volume is created.
+Production app startup applies any pending files in `docker/mysql/migrations`
+and records successful runs in `app_schema_migrations`. To trigger this manually
+from the server, run `docker compose -f docker-compose.prod.yml exec app npm run db:migrate`.
