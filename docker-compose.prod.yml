@@ -1,8 +1,8 @@
-name: emailsendingproject
+name: targetemail
 
 services:
   app:
-    container_name: emailsendingproject-app
+    container_name: targetemail-app
     build:
       context: .
       target: production
