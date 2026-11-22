@@ -9,7 +9,7 @@ services:
     command: ["npm", "run", "start:migrate"]
     restart: unless-stopped
     environment:
-      DB_HOST: mysql
+      DB_HOST: ${DB_SERVICE_HOST:-mysql}
       DB_PORT: 3306
       NODE_ENV: production
       DB_NAME: ${DB_NAME:-email_sending_project}
@@ -34,43 +34,10 @@ services:
       EMAIL_PROVIDER: ${EMAIL_PROVIDER:-Brevo API}
     ports:
       - "${APP_PORT:-43127}:3000"
-    depends_on:
-      mysql:
-        condition: service_healthy
+    networks:
+      - shared_services
 
-  mysql:
-    container_name: emailsendingproject-mysql
-    image: mysql:8.4
-    restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: ${DB_NAME:-email_sending_project}
-      MYSQL_USER: ${DB_USER:-email_app}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-email_app_password}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
-    ports:
-      - "${MYSQL_PORT:-43307}:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
-      - ./docker/mysql/conf.d:/etc/mysql/conf.d:ro
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  adminer:
-    container_name: emailsendingproject-adminer
-    image: adminer:latest
-    restart: unless-stopped
-    environment:
-      ADMINER_DEFAULT_SERVER: mysql
-    ports:
-      - "${ADMINER_PORT:-48080}:8080"
-    depends_on:
-      mysql:
-        condition: service_healthy
-
-volumes:
-  mysql_data:
-    name: emailserver_mysql_data
+networks:
+  shared_services:
+    name: shared_services
+    external: true

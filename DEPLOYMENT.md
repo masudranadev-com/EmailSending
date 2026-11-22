@@ -109,7 +109,20 @@ Replace `https://your-domain.com` with the production domain.
 
 ## 7. Deploy With Docker
 
-If the server supports Docker:
+If the server supports Docker, attach the existing MySQL and Adminer containers
+to the external `shared_services` Docker network before deploying. Create that
+network once if it does not exist:
+
+```bash
+docker network create shared_services
+```
+
+The MySQL container must have the network alias `mysql`; otherwise set
+`DB_SERVICE_HOST` in the deployment environment to its alias or container name.
+Set `DB_NAME`, `DB_USER`, and `DB_PASSWORD` to credentials already provisioned
+in that MySQL server. The app stack does not create or manage MySQL or Adminer.
+
+Then deploy:
 
 ```bash
 npm run setup:env
@@ -140,10 +153,8 @@ docker compose -f docker-compose.prod.yml exec app npm run db:migrate
 
 For Portainer, update/redeploy the stack after pulling the latest project files;
 the app startup performs the migrations automatically. To run one manually,
-open a console in the app container and run `npm run db:migrate`.
-The production Compose file keeps MySQL data in the named `emailserver_mysql_data`
-volume. Redeploying the stack does not remove that volume. The migration runner
-also refuses `DROP`, `TRUNCATE`, and `DELETE` statements.
+open a console in the app container and run `npm run db:migrate`. The migration
+runner also refuses `DROP`, `TRUNCATE`, and `DELETE` statements.
 
 ## 8. Security Notes
 
